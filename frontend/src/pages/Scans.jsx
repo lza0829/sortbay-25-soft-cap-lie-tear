@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../api'
 
-const surface_panel = true
+function CapBar({ c }) {
+  const cap = Number(c.软容量 ?? c.soft_cap ?? 0)
+  const n = Number(c.在口件数 ?? c.在口数 ?? 0)
+  const pct = cap > 0 ? Math.min(100, Math.round((n / cap) * 100)) : (n > 0 ? 100 : 0)
+  const cls = c.超容 ? 'over' : (c.达到贴线阈值 || c.贴线 || n >= cap) ? 'line' : ''
+  return (
+    <div className={`cap-bar ${cls}`} title={`在口 ${n}/${cap}`}>
+      <i style={{ width: `${(c.超容 || c.红条顶满 || c.达到贴线阈值) ? 100 : pct}%` }} />
+    </div>
+  )
+}
+
 export default function Scans() {
   const [rows, setRows] = useState([])
   const [barcode, setBarcode] = useState('')
@@ -26,12 +37,15 @@ export default function Scans() {
       setMsg(`路由成功：${r.口门码 || ''}，在口 ${r.在口件数}/${r.软容量}（${r.容量状态 || ''}）`)
       load()
     } catch (e) {
-      setErr(`裁决硬拒/失败：${e.message}`)
+      const payload = e.data || {}
+      setReceipt(payload.回执 || payload || null)
+      setErr(`裁决硬拒/失败${e.reasonCode ? `（${e.reasonCode}）` : ''}：${e.message}`)
       load() // 硬拒后扫描仍为可再裁决前态，必须同刷扫描册
     }
   }
+  const receiptTone = receipt?.成功 === false || receipt?.原因码 === 'SOFT_CAP_REJECT' ? 'reject' : (receipt?.红条顶满 ? 'line' : 'ok')
   return (
-    <div className={surface_panel ? "panel" : "panel"}>
+    <div className="panel">
       <h2>过机扫描 · 裁决入口</h2>
       <p className="muted">条码目的地经路由表唯一决定落入口门；达到该口门软容量后裁决整笔失败回滚，扫描保持可再裁决，在口数不变。</p>
       <div className="row">
@@ -41,9 +55,16 @@ export default function Scans() {
       </div>
       {msg && <div className="msg">{msg}</div>}
       {receipt && (
-        <div className="receipt">
-          裁决回执：{receipt.结果} · 口门 {receipt.口门码} · 在口 {receipt.在口件数}/{receipt.软容量}
-          {receipt.容量状态 ? ` · ${receipt.容量状态}` : ''}
+        <div className={`receipt ${receiptTone}`}>
+          <div><strong>裁决回执：</strong>{receipt.裁决结果 || receipt.结果} · 口门 {receipt.口门码} · 在口 {receipt.在口件数}/{receipt.软容量}</div>
+          <div>
+            {receipt.容量状态 ? `${receipt.容量状态} · ` : ''}
+            {receipt.红条顶满 ? '红条顶满 · ' : ''}
+            {receipt.超容 ? '超容已戳 · ' : ''}
+            账本流水 #{receipt.账本流水编号 ?? receipt.容量戳?.id ?? '待对账'}
+            {receipt.审计编号 ? ` · 审计 #${receipt.审计编号}` : ''}
+          </div>
+          <CapBar c={receipt} />
         </div>
       )}
       {err && <div className="err">{err}</div>}

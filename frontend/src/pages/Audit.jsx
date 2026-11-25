@@ -33,11 +33,33 @@ export default function Audit() {
         </label>
         <button type="button" onClick={doReplay}>重放该口门容量</button>
         {replay && (
-          <span className={replay.一致 ? 'badge ok' : 'badge danger'}>
-            {replay.口门码}：账本 {replay.账本累计} / 在口 {replay.在口件数} · {replay.一致 ? '可重放且一致' : '不一致'}
+          <span className={(replay.全部一致 ?? replay.一致) ? 'badge ok' : 'badge danger'}>
+            {replay.口门码}：账本 {replay.账本累计} / 在口 {replay.在口件数} · {replay.一致 ? 'SUM一致' : 'SUM不一致'} · {replay.链式一致 === false ? '断链' : '链式可重放'} · {replay.命运一致 === false ? '命运撕裂' : '裁决同命运'}
+            {Array.isArray(replay.审计事件) ? ` · 审计 ${replay.审计事件.length} 条` : ''}
           </span>
         )}
       </div>
+
+      {replay && Array.isArray(replay.命运异常) && replay.命运异常.length > 0 && (
+        <div className="alert-bar">
+          <strong>裁决/戳/审计命运异常（{replay.命运异常.length}）：</strong>
+          <ul>
+            {replay.命运异常.map((x, i) => (
+              <li key={`fate-${x.流水编号 ?? i}`}>[{x.异常码}] {x.问题}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {replay && Array.isArray(replay.链式异常) && replay.链式异常.length > 0 && (
+        <div className="alert-bar">
+          <strong>链式异常（{replay.链式异常.length}）：</strong>
+          <ul>
+            {replay.链式异常.map((x, i) => (
+              <li key={`chain-${x.流水编号 ?? i}`}>[{x.异常码}] {x.问题}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {replay && (
         <table>

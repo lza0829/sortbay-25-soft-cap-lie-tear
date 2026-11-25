@@ -3,12 +3,23 @@ import { api } from '../api'
 
 function capBadge(c) {
   if (c.超容) return <span className="badge danger">超容 {c.在口件数}/{c.软容量}</span>
-  if (c.容量状态 === '贴线') return <span className="badge warn">贴线 {c.在口件数}/{c.软容量}</span>
+  if (c.容量状态 === '贴线' || c.贴线) return <span className="badge warn">贴线 {c.在口件数}/{c.软容量}</span>
   if (c.压力等级 === '偏高') return <span className="badge high">偏高 {c.在口件数}/{c.软容量}</span>
   return <span className="badge ok">正常 {c.在口件数}/{c.软容量}</span>
 }
 
-const surface_panel = true
+function CapBar({ c }) {
+  const cap = Number(c.软容量 ?? c.soft_cap ?? 0)
+  const n = Number(c.在口件数 ?? c.在口数 ?? 0)
+  const pct = cap > 0 ? Math.min(100, Math.round((n / cap) * 100)) : (n > 0 ? 100 : 0)
+  const cls = c.超容 ? 'over' : (c.达到贴线阈值 || c.贴线) ? 'line' : ''
+  return (
+    <div className={`cap-bar ${cls}`} title={`在口 ${n}/${cap}`}>
+      <i style={{ width: `${(c.超容 || c.红条顶满 || c.达到贴线阈值) ? 100 : pct}%` }} />
+    </div>
+  )
+}
+
 export default function Chutes() {
   const [rows, setRows] = useState([])
   const [err, setErr] = useState('')
@@ -33,25 +44,26 @@ export default function Chutes() {
     } catch (e) { setErr(e.message) }
   }
   return (
-    <div className={surface_panel ? "panel" : "panel"}>
+    <div className="panel">
       <h2>口门</h2>
       <p className="muted">口径：超软容量硬拒 —— 在口数达到软容量后，下一笔裁决整笔失败回滚，扫描保持可再裁决前态，在口数不变。下调容量导致的超容口门会红色告警，但仍可开袋集包泄压。</p>
       {msg && <div className="msg">{msg}</div>}
       {err && <div className="err">{err}</div>}
       <table>
         <thead>
-          <tr><th>口门码</th><th>标题</th><th>状态</th><th>在口件数</th><th>软容量</th><th>剩余</th><th>容量/告警</th><th>改软容量</th><th>开闭</th></tr>
+          <tr><th>口门码</th><th>标题</th><th>状态</th><th>在口件数</th><th>软容量</th><th>剩余</th><th>容量条/告警</th><th>改软容量</th><th>开闭</th></tr>
         </thead>
         <tbody>
           {rows.map((c) => (
-            <tr key={c.id} className={c.超容 ? 'row-over' : (c.容量状态 === '贴线' ? 'row-line' : '')}>
+            <tr key={c.id} className={c.超容 ? 'row-over' : ((c.容量状态 === '贴线' || c.贴线) ? 'row-line' : '')}>
               <td>{c.code}</td>
               <td>{c.title}</td>
               <td>{c.status}</td>
               <td><strong>{c.在口件数}</strong></td>
-              <td>{c.soft_cap}</td>
+              <td>{c.soft_cap ?? c.软容量}</td>
               <td>{c.剩余容量}</td>
-              <td>
+              <td style={{ minWidth: 150 }}>
+                <CapBar c={c} />
                 {capBadge(c)}
                 {c.告警信息 && <div className="err small">{c.告警信息}</div>}
               </td>
@@ -59,7 +71,7 @@ export default function Chutes() {
                 <input
                   style={{ minWidth: 70, width: 80 }}
                   inputMode="numeric"
-                  placeholder={String(c.soft_cap)}
+                  placeholder={String(c.soft_cap ?? c.软容量)}
                   value={capDraft[c.id] ?? ''}
                   onChange={(e) => setCapDraft((d) => ({ ...d, [c.id]: e.target.value }))}
                 />

@@ -80,15 +80,20 @@ def capacity_center():
         views = all_chute_views(conn)
         over = [v for v in views if v["超容"]]
         full = [v for v in views if v["贴线"]]
+        gate_closed = [v for v in views if v["达到贴线阈值"]]
         return {
             "软容量策略": POLICY,
             "策略": POLICY,
             "口径": POLICY_CLAUSE,
+            "口径条款": POLICY_CLAUSE,
             "口门": views,
             "超容口门": over,
             "贴线口门": full,
+            "闸线闭闭口门": gate_closed,
+            "红条口门": gate_closed,
             "超容口门数": len(over),
             "贴线口门数": len(full),
+            "闸线闭闭口门数": len(gate_closed),
         }
 
 
@@ -153,7 +158,8 @@ def set_cap_by_body(body: CapByCodeIn):
     new_cap = _pick_cap(body)
     if new_cap is None:
         raise HTTPException(422, "必须提供 软容量")
-    with db() as conn:
+    # 与路径参数改容量、裁决落入共用 BEGIN IMMEDIATE 写锁。
+    with write_immediate() as conn:
         chute = None
         cid = body.口门编号 if body.口门编号 is not None else body.口门id
         if cid is None:

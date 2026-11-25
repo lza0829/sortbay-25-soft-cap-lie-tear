@@ -172,3 +172,31 @@ th { background: #e4e8ee; }
   font-size: 0.9rem;
 }
 h3 { margin: 1.1rem 0 0.5rem; font-size: 1rem; }
+
+.cap-bar {
+  position: relative;
+  height: 12px;
+  width: 100%;
+  min-width: 90px;
+  background: #e7ebf0;
+  border: 1px solid #aab3bf;
+  margin: 0.15rem 0 0.35rem;
+  overflow: hidden;
+}
+.cap-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #4f8a68, #79b08c);
+  transition: width 120ms linear;
+}
+.cap-bar.line i { background: repeating-linear-gradient(90deg, var(--warn) 0 10px, #d39a22 10px 20px); }
+.cap-bar.over i { background: repeating-linear-gradient(90deg, var(--danger) 0 10px, #7d2b20 10px 20px); }
+.alert-bar.warn-bar {
+  background: #f7e8c2;
+  border-color: #d7b55f;
+  border-left-color: #b78313;
+  color: #65490d;
+}
+.receipt.line { background: #fbf3dd; border-left-color: #b78313; }
+.receipt.reject { background: #f3d6d0; border-left-color: var(--danger); color: #5d2118; }
+.receipt > div { margin: 0.15rem 0; }

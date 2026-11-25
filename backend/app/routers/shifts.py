@@ -1,7 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from app.db import db, rows_to_list, row_to_dict
+from app.db import db, rows_to_list, row_to_dict, write_immediate
 from app.services.capacity import overview_reconcile, replay_all
 from app.services.common import audit, now_str
 
@@ -47,6 +47,7 @@ def reconcile(shift_id: int | None = None):
         ).fetchone()["c"]
         cap_rec = overview_reconcile(conn)
         ledger = replay_all(conn)
+        capacity_ok = bool(cap_rec["一致"] and ledger["全部一致"])
         return {
             "班次": row_to_dict(shift),
             "扫描总数": scan_n,
@@ -58,14 +59,24 @@ def reconcile(shift_id: int | None = None):
             # 班次边界与总览容量对账同刷：超容口门与在口/账本一致性一并给出。
             "超容口门": cap_rec["超容口门"],
             "超容口门数": cap_rec["超容口门数"],
-            "容量对账一致": cap_rec["一致"] and ledger["全部一致"],
+            "容量对账一致": capacity_ok,
+            "全部一致": capacity_ok,
+            "可重放": capacity_ok,
+            "容量账一致": capacity_ok,
+            "冻结宣称": not capacity_ok,
+            "容量账未清": not capacity_ok,
+            "未超": capacity_ok and len(cap_rec["超容口门"]) == 0,
+            "可以宣称未超": capacity_ok and len(cap_rec["超容口门"]) == 0,
+            "账本重放": ledger,
+            "异常口门": ledger.get("异常口门", []),
             "容量对账": cap_rec,
         }
 
 
 @router.post("/班次")
 def create_shift(body: ShiftIn):
-    with db() as conn:
+    # IMMEDIATE 串行化“检查未封班 + 开班”，避免两路并发开出多个开放班次。
+    with write_immediate() as conn:
         open_one = conn.execute("SELECT id FROM shifts WHERE sealed=0").fetchone()
         if open_one:
             raise HTTPException(400, "仍有未封班班次，先封班再开新班")
@@ -86,7 +97,8 @@ def create_shift(body: ShiftIn):
 
 @router.post("/班次/{shift_id}/封班")
 def seal_shift(shift_id: int):
-    with db() as conn:
+    # 拿 IMMEDIATE 写锁后再数未清件，避免“检查为 0 后、封班前”插入裁决落入。
+    with write_immediate() as conn:
         shift = conn.execute("SELECT * FROM shifts WHERE id=?", (shift_id,)).fetchone()
         if not shift:
             raise HTTPException(404, "班次不存在")

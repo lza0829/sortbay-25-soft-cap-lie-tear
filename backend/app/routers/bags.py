@@ -47,13 +47,23 @@ def list_bags():
             d = dict(b)
             cid = b["chute_id"]
             n = counts.get(cid, 0)
+            chute = conn.execute("SELECT * FROM chutes WHERE id=?", (cid,)).fetchone()
+            cv = chute_view(conn, chute, n) if chute else None
             cap = int(b["soft_cap"])
             d["在口件数"] = n
             d["在口数"] = n
             d["软容量"] = cap
-            d["超容"] = n > cap
-            d["告警"] = n > cap
-            d["容量状态"] = "超容" if n > cap else ("贴线" if n >= cap else "正常")
+            if cv:
+                for k in (
+                    "剩余容量", "超容", "是否超容", "over_cap", "贴线", "达到贴线阈值",
+                    "红条顶满", "容量状态", "压力等级", "告警", "贴线告警", "超容告警",
+                    "告警级别", "告警信息", "容量戳", "超容戳", "软容量策略", "策略",
+                ):
+                    d[k] = cv[k]
+            else:
+                d["超容"] = n > cap
+                d["告警"] = n >= cap
+                d["容量状态"] = "超容" if n > cap else ("贴线" if n >= cap else "正常")
             d["集包压力"] = d["容量状态"]
             out.append(d)
         return out

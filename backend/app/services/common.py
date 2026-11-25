@@ -35,11 +35,12 @@ def current_shift(conn):
     return row
 
 
-def audit(conn, kind: str, ref_id: int | None, action: str, note: str = "") -> None:
-    conn.execute(
+def audit(conn, kind: str, ref_id: int | None, action: str, note: str = "") -> int:
+    cur = conn.execute(
         "INSERT INTO audit_events(kind, ref_id, action, created_at, note) VALUES (?, ?, ?, ?, ?)",
         (kind, ref_id, action, now_str(), note),
     )
+    return int(cur.lastrowid)
 
 
 def require_unsealed(conn) -> None:

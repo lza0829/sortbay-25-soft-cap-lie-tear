@@ -2,7 +2,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.db import db, rows_to_list, row_to_dict, write_immediate
-from app.services.capacity import chute_view, in_count, record_ledger
+from app.services.capacity import POLICY, chute_view, in_count, record_ledger
 from app.services.common import audit, current_shift, now_str, require_unsealed, unique_code
 
 router = APIRouter(tags=["错分回流"])
@@ -84,6 +84,12 @@ def create_divert(body: DivertIn):
             "口门编号": scan["chute_id"],
             "在口件数": after,
             "在口数": after,
+            "超容": bool(chute_info and chute_info["超容"]),
+            "贴线": bool(chute_info and chute_info["贴线"]),
+            "达到贴线阈值": bool(chute_info and chute_info["达到贴线阈值"]),
+            "红条顶满": bool(chute_info and chute_info["红条顶满"]),
+            "容量状态": chute_info["容量状态"] if chute_info else None,
+            "软容量策略": POLICY,
         }
 
 def _surface_router_diverts() -> dict:

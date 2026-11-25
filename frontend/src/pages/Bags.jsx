@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../api'
 
-const surface_panel = true
 export default function Bags() {
   const [bags, setBags] = useState([])
   const [chutes, setChutes] = useState([])
@@ -45,7 +44,7 @@ export default function Bags() {
   }
   const chosen = chutes.find((c) => String(c.id) === String(chuteId))
   return (
-    <div className={surface_panel ? "panel" : "panel"}>
+    <div className="panel">
       <h2>封袋 · 集包入口</h2>
       {msg && <div className="msg">{msg}</div>}
       {err && <div className="err">{err}</div>}
